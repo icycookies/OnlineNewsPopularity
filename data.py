@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
+from scipy.stats import pearsonr
 
 
 # def load_data(path):
@@ -70,6 +71,15 @@ def split_by_time(x, y, train_ratio, test_ratio, reverse=False):
         train_x, train_y = x[:num_train], y[:num_train]
     return (train_x, train_y), (test_x, test_y)
 
+def process_features(x, y, topk=10, reverse=False):
+    pcc = []
+    for i in range(x.shape(1)):
+        pcc.append((pearsonr(x[:, i], y)[0], i))
+    pcc = sorted(pcc)
+    p = np.array([x[1] for x in pcc[:topk]])
+    if reverse:
+        p = np.flip(p)
+    return x[:, p]
 
 if __name__ == "__main__":
     x, y = load_data('./OnlineNewsPopularity.csv')
