@@ -9,6 +9,7 @@ from sklearn.decomposition import PCA
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
+from sklearn.ensemble import RandomForestClassifier
 import argparse
 import random
 import numpy as np
@@ -33,7 +34,7 @@ def build_args():
     parser.add_argument("--lr", type=float, default=0.5)
     parser.add_argument("--num_iterations", type=int, default=500)
     # parameters for SVM
-    parser.add_argument("--kernel", type=str, default="linear", choices=["linear", "sigmoid", "rbf"])
+    parser.add_argument("--kernel", type=str, default="rbf", choices=["linear", "sigmoid", "rbf"])
     parser.add_argument("--decision_function_shape", type=str, default="ovr", choices=["ovo", "ovr"])
     parser.add_argument("--C", type=float, default=1.)
     parser.add_argument("--gamma", type=float, default=1.)
@@ -72,6 +73,8 @@ def get_classifier(args, name="logistic"):
         return SVM(C=args.C, gamma=args.gamma, kernel=args.kernel, decision_function_shape=args.decision_function_shape)
     if name == "PCA_KNN":
         return PCA_KNN(n_components=args.n_components, n_neighbors=args.n_neighbors)
+    if name == "rf":
+        return RandomForestClassifier(n_estimators=30)
     if name == "NB":
         return naive_bayes()
     if name == "FNN":
@@ -81,26 +84,40 @@ def get_classifier(args, name="logistic"):
 
 
 def main(args):
-    set_seed(args.seed)
     data = load_data('./OnlineNewsPopularity.csv')
-    if args.split == "random":
-        train_data, test_data = random_split(data[0], data[1], args.train_ratio, args.test_ratio)
-    elif args.split == "time" or args.split == "time_reverse":
-        train_data, test_data = split_by_time(data[0], data[1], args.train_ratio, args.test_ratio, reverse=(args.split == "time_reverse"))
-    else:
-        raise NotImplementedError
 
-    print("Train data: ", train_data[0].shape, train_data[1].shape)
-    args.feature_dim = train_data[0].shape[1]
+    metrics = {"accuracy": [], "auc": [], "f1": []}
+    for seed in range(10):
+        set_seed(seed)
 
-    clf = get_classifier(args, name=args.model)
-    clf.fit(train_data[0], train_data[1])
+        if args.split == "random":
+            train_data, test_data = random_split(data[0], data[1], args.train_ratio, args.test_ratio)
+        elif args.split == "time" or args.split == "time_reverse":
+            train_data, test_data = split_by_time(data[0], data[1], args.train_ratio, args.test_ratio, reverse=(args.split == "time_reverse"))
+        else:
+            raise NotImplementedError
 
-    train_metrics = evaluate(clf, train_data[0], train_data[1])
-    test_metrics = evaluate(clf, test_data[0], test_data[1])
+        args.feature_dim = train_data[0].shape[1]
 
-    print("Train metrics: ", train_metrics)
-    print("Test metrics: ", test_metrics)
+        clf = get_classifier(args, name=args.model)
+        clf.fit(train_data[0], train_data[1])
+
+        train_metrics = evaluate(clf, train_data[0], train_data[1])
+        test_metrics = evaluate(clf, test_data[0], test_data[1])
+
+        # print("Train metrics: ", train_metrics)
+        print("Test metrics: ", test_metrics)
+
+        metrics["accuracy"].append(test_metrics["accuracy"])
+        metrics["auc"].append(test_metrics["auc"])
+        metrics["f1"].append(test_metrics["f1"])
+
+    for k, v in metrics.items():
+        print(f"{k}: {np.mean(v):.4f}±{np.std(v):.4f}")
+
+    if isinstance(clf, LogisticRegression):
+        np.save("wt.npy", clf.weight)
+        np.save("bs.npy", clf.bias)
 
 
 if __name__ == "__main__":
