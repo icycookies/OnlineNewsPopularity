@@ -52,7 +52,7 @@ class LogisticRegression(BaseEstimator):
         best_val_cost = 1000
         best_weight = self.weight
         best_bias = self.bias
-        for i in tqdm(range(self.num_iterations)):
+        for i in range(self.num_iterations):
             grads, cost = self.forward_backward(train_x, train_y)
             dw, db = grads
 
