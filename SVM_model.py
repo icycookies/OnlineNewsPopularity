@@ -1,5 +1,6 @@
-from sklearn import svm
+from sklearn.svm import SVC
 import numpy as np
+
 
 class SVM:
     
@@ -9,6 +10,8 @@ class SVM:
         self.C = C
         self.gamma = gamma
         self.decision_function_shape = decision_function_shape
+        # self.clf = SVC(kernel=self.kernel, C=self.C, gamma=self.gamma)
+        self.clf = SVC(kernel="linear", C=self.C, gamma="scale")
        
     def fit(self, x, y):
         clf = self.clf
