@@ -4,14 +4,14 @@ from SVM_model import SVM
 from PCA_KNN_model import PCA_KNN
 from GaussianNB_model import naive_bayes
 from FNN_model import FNN
+from RF_model import RF
 from sklearn import svm
 from sklearn.utils.estimator_checks import check_estimator
 from sklearn.decomposition import PCA
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import accuracy_score, roc_curve, roc_auc_score, f1_score, precision_score, recall_score
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, roc_curve, roc_auc_score, f1_score, precision_score, recall_score, roc_curve
 import argparse
 import random
 import numpy as np
@@ -59,12 +59,18 @@ def build_args():
 
 def evaluate(clf, x, y):
     pred = clf.predict(x)
+    prob = clf.predict_proba(x)
     acc = accuracy_score(y, pred)
-    auc = roc_auc_score(y, pred)
+    auc = roc_auc_score(y, prob)
     f1 = f1_score(y, pred)
     precision = precision_score(y, pred)
     recall = recall_score(y, pred)
     return {"accuracy": acc, "auc": auc, "f1": f1, "precision": precision, "recall": recall}
+
+def save_auc_curve(path, clf, x, y):
+    prob = clf.predict_proba(x)
+    fpr, tpr, _ = roc_curve(y, prob)
+    pickle.dump({"tpr": tpr, "fpr": fpr, "auc": roc_auc_score(y, prob)}, open(path, "wb"))
 
 def get_classifier_hparam_search(args, name="logistic"):
     if name == "logistic":
@@ -77,7 +83,7 @@ def get_classifier_hparam_search(args, name="logistic"):
     if name == "RF":
         param_grid = {'n_estimators': args.n_estimators, 'max_depth': args.max_depth}
         print(param_grid)
-        return GridSearchCV(RandomForestClassifier(), param_grid, cv=5, scoring='f1', verbose=3)
+        return GridSearchCV(RF(), param_grid, cv=5, scoring='f1', verbose=3)
     if name == "PCA_KNN":
         param_grid = {'n_components': args.n_components, "n_neighbors": args.n_neighbors}
         print(param_grid)
@@ -108,7 +114,7 @@ def get_classifier(name="logistic", params={}):
     if name == "SVM":
         return SVM(C=args.C, gamma=args.gamma, kernel=args.kernel, decision_function_shape=args.decision_function_shape)
     if name == "RF":
-        return RandomForestClassifier(**params)
+        return RF(**params)
     if name == "PCA_KNN":
         return PCA_KNN(**params)
     if name == "NB":
@@ -127,7 +133,7 @@ def main(args):
     if args.model == "NB":
         best_params = {}
     elif args.model == "FNN":
-        best_params = {"hidden_layer_sizes": (64, 128, 256), "activation": "relu", "batch_size": 256, "lr":1e-3, "max_iter":200}
+        best_params = {"hidden_layer_sizes": (64, 128, 256), "activation": "tanh", "batch_size": 256, "lr":1e-3, "max_iter": 50}
     else:
         clf = get_classifier_hparam_search(args, name=args.model)
         clf.fit(train_data[0], train_data[1])
@@ -159,6 +165,8 @@ def main(args):
         metrics["f1"].append(test_metrics["f1"])
         metrics["precision"].append(test_metrics["precision"])
         metrics["recall"].append(test_metrics["recall"])
+        if seed == 0:
+            save_auc_curve("./auc_result/" + args.model + ".pkl", clf, test_data[0], test_data[1])
 
     for k, v in metrics.items():
         print(f"{k}: {np.mean(v):.4f}±{np.std(v):.4f}")

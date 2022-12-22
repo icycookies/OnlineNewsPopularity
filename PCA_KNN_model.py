@@ -24,6 +24,12 @@ class PCA_KNN:
         pred = clf.predict(x_pca)
         return pred
 
+    def predict_proba(self,x):
+        clf = self.clf
+        x_pca = self.PCAprocess(x)
+        pred = clf.predict_proba(x_pca)[:, 1]
+        return pred
+
     def get_params(self, deep=True):
         """Get parameters for this estimator.
 

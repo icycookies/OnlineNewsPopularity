@@ -15,3 +15,8 @@ class naive_bayes:
         clf = self.clf
         pred = clf.predict(x)
         return pred
+
+    def predict_proba(self, x):
+        clf = self.clf
+        pred = clf.predict_proba(x)[:, 1]
+        return pred

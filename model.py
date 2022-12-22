@@ -74,6 +74,9 @@ class LogisticRegression(BaseEstimator):
         pred = np.where(A > 0.5, 1, 0)
         return pred
 
+    def predict_proba(self, x):
+        return self.sigmoid(np.dot(x, self.weight) + self.bias)
+
     def get_params(self, deep=True):
         """Get parameters for this estimator.
 

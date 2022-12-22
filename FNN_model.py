@@ -27,6 +27,9 @@ class FNN(BaseEstimator):
         pred = clf.predict(x)
         return pred
 
+    def predict_proba(self, x):
+        return self.clf.predict_proba(x)[:, 1]
+
     def get_params(self, deep=True):
         """Get parameters for this estimator.
 
